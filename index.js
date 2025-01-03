@@ -4,12 +4,7 @@ const db = require('./src/configs/database.js');
 
 const app = express();
 
-const corsOptions = {
-  origin: 'https://dash-n-dine.vercel.app/', // Replace with your frontend domain
-  optionsSuccessStatus: 200
-};
 
-app.use(cors(corsOptions));
 
 app.use(cors());
 app.use(express.json());
