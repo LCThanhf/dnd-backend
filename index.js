@@ -70,6 +70,13 @@ app.get('/api/table-info', (req, res) => {
 app.post('/api/orders', (req, res) => {
   const { tableNumber, orderItems, totalAmount, paymentMethod } = req.body;
   
+  console.log('Received order data:', {
+    tableNumber,
+    orderItems,
+    totalAmount,
+    paymentMethod
+  });
+  
   // Input validation
   if (!tableNumber || !orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
     return res.status(400).send('Invalid order data');
