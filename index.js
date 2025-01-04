@@ -100,59 +100,64 @@ app.get('/api/table-info', (req, res) => {
 });
 
 
-// order
+// Modified order endpoint
 app.post('/api/orders', (req, res) => {
   const { tableNumber, orderItems, totalAmount, paymentMethod } = req.body;
   
-  console.log('Received order data:', {
+  // Debug logging
+  console.log('Received order:', {
     tableNumber,
     orderItems,
     totalAmount,
     paymentMethod
   });
-  
-  // Input validation
-  if (!tableNumber || !orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-    return res.status(400).send('Invalid order data');
+
+  // Validate input
+  if (!tableNumber || !orderItems || !Array.isArray(orderItems)) {
+    console.error('Invalid order data:', { tableNumber, orderItems });
+    return res.status(400).send('Missing required fields');
   }
 
-  const orderDate = new Date();
+  // Format data
+  const orderDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const status = 'waiting';
   const items = JSON.stringify(orderItems);
 
-  const query = `
-    INSERT INTO orders (
-      table_number,
+  try {
+    // Simple INSERT query
+    const query = `
+      INSERT INTO orders 
+        (table_number, items, total_amount, payment_method, order_date, status, total_price) 
+      VALUES 
+        (?, ?, ?, ?, ?, ?, ?)`;
+
+    const values = [
+      tableNumber,
       items,
-      total_amount,
-      payment_method, 
-      order_date,
+      totalAmount,
+      paymentMethod,
+      orderDate,
       status,
-      total_price
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
+      totalAmount
+    ];
 
-  const values = [
-    tableNumber,
-    items,
-    totalAmount,
-    paymentMethod,
-    orderDate,
-    status,
-    totalAmount // total_price is same as totalAmount
-  ];
+    // Execute query with error handling
+    db.query(query, values, (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).send('Database error');
+      }
 
-  db.query(query, values, (err, results) => {
-    if (err) {
-      console.error('Error saving order:', err);
-      return res.status(500).send('Database error');
-    }
-
-    res.status(201).json({
-      message: 'Order created successfully',
-      orderId: results.insertId
+      return res.status(201).json({
+        success: true,
+        message: 'Order created successfully',
+        orderId: results.insertId
+      });
     });
-  });
+  } catch (error) {
+    console.error('Server error:', error);
+    return res.status(500).send('Server error');
+  }
 });
 
 // update order status
