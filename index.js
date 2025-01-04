@@ -18,13 +18,25 @@ app.listen(PORT, () => {
 //food items
 app.get('/api/food-items', (req, res) => {
   const type = req.query.type;
-  let query = 'SELECT * FROM food_items';
+  
+  // Basic query without type filter
+  let query = `
+    SELECT id, name, price, type, image, published_at 
+    FROM food_items 
+    WHERE published_at IS NOT NULL`;
+  
   let queryParams = [];
 
+  // Add type filter if specified
   if (type && type !== 'ALL') {
-    query += ' WHERE type = ?';
+    query += ' AND type = ?';
     queryParams.push(type);
   }
+
+  // Add ordering
+  query += ' ORDER BY id ASC';
+
+  console.log('Executing query:', query, queryParams); // Debug log
 
   db.query(query, queryParams, (err, results) => {
     if (err) {
@@ -33,14 +45,20 @@ app.get('/api/food-items', (req, res) => {
     }
 
     try {
+      if (!results || !Array.isArray(results)) {
+        throw new Error('No results or invalid format');
+      }
+
       const foodItems = results.map(item => ({
         id: item.id,
         name: item.name,
-        price: parseFloat(item.price),
-        type: item.type,
-        image: item.image
+        price: parseFloat(item.price || 0),
+        type: item.type || 'ALL',
+        image: item.image || ''
       }));
+
       res.json(foodItems);
+      
     } catch (error) {
       console.error('Error processing food items:', error);
       res.status(500).send('Data processing error');
