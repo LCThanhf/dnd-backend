@@ -18,25 +18,13 @@ app.listen(PORT, () => {
 //food items
 app.get('/api/food-items', (req, res) => {
   const type = req.query.type;
-  
-  // Basic query without type filter
-  let query = `
-    SELECT id, name, price, type, image, published_at 
-    FROM food_items 
-    WHERE published_at IS NOT NULL`;
-  
+  let query = 'SELECT * FROM food_items';
   let queryParams = [];
 
-  // Add type filter if specified
   if (type && type !== 'ALL') {
-    query += ' AND type = ?';
+    query += ' WHERE type = ?';
     queryParams.push(type);
   }
-
-  // Add ordering
-  query += ' ORDER BY id ASC';
-
-  console.log('Executing query:', query, queryParams); // Debug log
 
   db.query(query, queryParams, (err, results) => {
     if (err) {
@@ -45,20 +33,14 @@ app.get('/api/food-items', (req, res) => {
     }
 
     try {
-      if (!results || !Array.isArray(results)) {
-        throw new Error('No results or invalid format');
-      }
-
       const foodItems = results.map(item => ({
         id: item.id,
         name: item.name,
-        price: parseFloat(item.price || 0),
-        type: item.type || 'ALL',
-        image: item.image || ''
+        price: parseFloat(item.price),
+        type: item.type,
+        image: item.image
       }));
-
       res.json(foodItems);
-      
     } catch (error) {
       console.error('Error processing food items:', error);
       res.status(500).send('Data processing error');
@@ -100,64 +82,59 @@ app.get('/api/table-info', (req, res) => {
 });
 
 
-// Modified order endpoint
+// order
 app.post('/api/orders', (req, res) => {
   const { tableNumber, orderItems, totalAmount, paymentMethod } = req.body;
   
-  // Debug logging
-  console.log('Received order:', {
+  console.log('Received order data:', {
     tableNumber,
     orderItems,
     totalAmount,
     paymentMethod
   });
-
-  // Validate input
-  if (!tableNumber || !orderItems || !Array.isArray(orderItems)) {
-    console.error('Invalid order data:', { tableNumber, orderItems });
-    return res.status(400).send('Missing required fields');
+  
+  // Input validation
+  if (!tableNumber || !orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+    return res.status(400).send('Invalid order data');
   }
 
-  // Format data
-  const orderDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const orderDate = new Date();
   const status = 'waiting';
   const items = JSON.stringify(orderItems);
 
-  try {
-    // Simple INSERT query
-    const query = `
-      INSERT INTO orders 
-        (table_number, items, total_amount, payment_method, order_date, status, total_price) 
-      VALUES 
-        (?, ?, ?, ?, ?, ?, ?)`;
-
-    const values = [
-      tableNumber,
+  const query = `
+    INSERT INTO orders (
+      table_number,
       items,
-      totalAmount,
-      paymentMethod,
-      orderDate,
+      total_amount,
+      payment_method, 
+      order_date,
       status,
-      totalAmount
-    ];
+      total_price
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
 
-    // Execute query with error handling
-    db.query(query, values, (err, results) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).send('Database error');
-      }
+  const values = [
+    tableNumber,
+    items,
+    totalAmount,
+    paymentMethod,
+    orderDate,
+    status,
+    totalAmount // total_price is same as totalAmount
+  ];
 
-      return res.status(201).json({
-        success: true,
-        message: 'Order created successfully',
-        orderId: results.insertId
-      });
+  db.query(query, values, (err, results) => {
+    if (err) {
+      console.error('Error saving order:', err);
+      return res.status(500).send('Database error');
+    }
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      orderId: results.insertId
     });
-  } catch (error) {
-    console.error('Server error:', error);
-    return res.status(500).send('Server error');
-  }
+  });
 });
 
 // update order status
