@@ -83,33 +83,27 @@ app.post('/api/orders', (req, res) => {
     INSERT INTO orders (
       table_number,
       items,
-      item_count,
       total_amount,
-      payment_method,
+      payment_method, 
       order_date,
-      status
+      status,
+      total_price
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
     tableNumber,
     items,
-    orderItems.length,
     totalAmount,
     paymentMethod,
     orderDate,
-    status
+    status,
+    totalAmount // total_price is same as totalAmount
   ];
 
   db.query(query, values, (err, results) => {
     if (err) {
       console.error('Error saving order:', err);
-      if (err.code === 'ER_NO_REFERENCED_ROW') {
-        return res.status(400).send('Invalid table number');
-      }
-      if (err.code === 'ER_DUP_ENTRY') {
-        return res.status(409).send('Duplicate order');
-      }
       return res.status(500).send('Database error');
     }
 
