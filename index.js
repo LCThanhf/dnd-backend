@@ -100,27 +100,40 @@ app.post('/api/orders', (req, res) => {
     return res.status(400).send('Missing required fields');
   }
 
-  // Format data
-  const orderDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  const status = 'waiting';
+  // Format data with Strapi columns
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const items = JSON.stringify(orderItems);
 
   try {
-    // Simple INSERT query
     const query = `
-      INSERT INTO orders 
-        (table_number, items, total_amount, payment_method, order_date, status, total_price) 
-      VALUES 
-        (?, ?, ?, ?, ?, ?, ?)`;
+      INSERT INTO orders (
+        table_number, 
+        items, 
+        total_amount, 
+        payment_method, 
+        order_date, 
+        status, 
+        total_price,
+        published_at,
+        created_by,
+        updated_by,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const values = [
       tableNumber,
       items,
       totalAmount,
       paymentMethod,
-      orderDate,
-      status,
-      totalAmount
+      now, // order_date
+      'waiting', // status
+      totalAmount, // total_price
+      now, // published_at
+      1, // created_by (default admin ID)
+      1, // updated_by (default admin ID)
+      now, // created_at
+      now  // updated_at
     ];
 
     // Execute query with error handling
@@ -136,6 +149,7 @@ app.post('/api/orders', (req, res) => {
         orderId: results.insertId
       });
     });
+
   } catch (error) {
     console.error('Server error:', error);
     return res.status(500).send('Server error');
