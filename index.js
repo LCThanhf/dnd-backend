@@ -19,16 +19,32 @@ app.listen(PORT, () => {
 app.get('/api/food-items', (req, res) => {
   const type = req.query.type;
   let query = 'SELECT * FROM food_items';
-  if (type) {
+  let queryParams = [];
+
+  if (type && type !== 'ALL') {
     query += ' WHERE type = ?';
+    queryParams.push(type);
   }
-  db.query(query, [type], (err, results) => {
+
+  db.query(query, queryParams, (err, results) => {
     if (err) {
       console.error('Error fetching food items:', err);
-      res.status(500).send('Server error');
-      return;
+      return res.status(500).send('Database error');
     }
-    res.json(results);
+
+    try {
+      const foodItems = results.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: parseFloat(item.price),
+        type: item.type,
+        image: item.image
+      }));
+      res.json(foodItems);
+    } catch (error) {
+      console.error('Error processing food items:', error);
+      res.status(500).send('Data processing error');
+    }
   });
 });
 
