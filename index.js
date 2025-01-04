@@ -69,24 +69,54 @@ app.get('/api/table-info', (req, res) => {
 // order
 app.post('/api/orders', (req, res) => {
   const { tableNumber, orderItems, totalAmount, paymentMethod } = req.body;
+  
+  // Input validation
+  if (!tableNumber || !orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+    return res.status(400).send('Invalid order data');
+  }
+
   const orderDate = new Date();
   const status = 'waiting';
-
-  // Format the items as a string with the desired format
-  const items = orderItems.map(item => `${item.name},${item.amount},${item.price}`).join('; ');
+  const items = JSON.stringify(orderItems);
 
   const query = `
-    INSERT INTO orders (table_number, items, total_amount, total_price, payment_method, order_date, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (
+      table_number,
+      items,
+      item_count,
+      total_amount,
+      payment_method,
+      order_date,
+      status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(query, [tableNumber, items, orderItems.length, totalAmount, paymentMethod, orderDate, status], (err, results) => {
+  const values = [
+    tableNumber,
+    items,
+    orderItems.length,
+    totalAmount,
+    paymentMethod,
+    orderDate,
+    status
+  ];
+
+  db.query(query, values, (err, results) => {
     if (err) {
       console.error('Error saving order:', err);
-      res.status(500).send('Server error');
-      return;
+      if (err.code === 'ER_NO_REFERENCED_ROW') {
+        return res.status(400).send('Invalid table number');
+      }
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).send('Duplicate order');
+      }
+      return res.status(500).send('Database error');
     }
-    res.status(201).send('Order saved successfully');
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      orderId: results.insertId
+    });
   });
 });
 
